@@ -2,8 +2,8 @@
 // SUPABASE CONFIGURATION
 // ============================================================================
 // IMPORTANT: Replace these with your actual Supabase credentials
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://hebuaabantmnfdxxkaif.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
