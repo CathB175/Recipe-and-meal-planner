@@ -736,11 +736,157 @@
                 print-color-adjust: exact !important;
             }
         }
+        #login-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0f3d28;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+#login-screen.show { display: flex; }
+#loading-screen {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: #0f3d28;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    color: white;
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.5rem;
+}
+.login-box {
+    background: white;
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.login-box h1 { font-family: 'Crimson Pro', serif; font-size: 2.2rem; color: #0f3d28; margin-bottom: 6px; }
+.login-box p { color: #7f8c8d; font-size: 14px; margin-bottom: 32px; }
+.login-box input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e8e4df;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 14px;
+    outline: none;
+    box-sizing: border-box;
+    color: #2c3e50;
+    transition: border-color 0.2s;
+}
+.login-box input:focus { border-color: #1a5f3d; }
+.login-submit {
+    width: 100%;
+    padding: 14px;
+    background: #1a5f3d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s;
+}
+.login-submit:hover { background: #2d8659; }
+.login-submit:disabled { background: #e8e4df; color: #7f8c8d; cursor: not-allowed; }
+.login-error { color: #e74c3c; font-size: 13px; margin-top: 10px; display: none; }
+.nav-logout {
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+}
+.nav-logout:hover { color: white; background: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="loading-screen">Loading...</div>
 
+<div id="login-screen">
+    <div class="login-box">
+        <h1>🍳 RecipeFlow</h1>
+        <p>Your personal nutrition hub</p>
+        <input type="email" id="login-email" placeholder="Email" autocomplete="email" />
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+        <button class="login-submit" id="login-btn" onclick="handleLogin()">Sign In</button>
+        <div class="login-error" id="login-error"></div>
+    </div>
+</div>
+
+<div id="root"></div>
+    <script>
+    async function initAuth() {
+        const { data: { session } } = await window.supabase.createClient(
+            'https://hebuaabantmnfdxxkaif.supabase.co',
+            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
+        ).auth.getSession();
+
+        document.getElementById('loading-screen').style.display = 'none';
+
+        if (!session) {
+            document.getElementById('login-screen').classList.add('show');
+        }
+
+        window.supabase.createClient(
+            'https://hebuaabantmnfdxxkaif.supabase.co',
+            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
+        ).auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                document.getElementById('login-screen').classList.remove('show');
+            } else {
+                document.getElementById('login-screen').classList.add('show');
+                document.getElementById('root').innerHTML = '';
+            }
+        });
+    }
+
+    async function handleLogin() {
+        const email    = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn      = document.getElementById('login-btn');
+        const errEl    = document.getElementById('login-error');
+
+        errEl.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+
+        const { error } = await window.supabase.createClient(
+            'https://hebuaabantmnfdxxkaif.supabase.co',
+            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
+        ).auth.signInWithPassword({ email, password });
+
+        if (error) {
+            errEl.textContent = error.message;
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && document.getElementById('login-screen').classList.contains('show')) {
+            handleLogin();
+        }
+    });
+
+    initAuth();
+</script>
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
@@ -911,6 +1057,7 @@
                             setMobileMenuOpen(false);
                         }}
                         mobileOpen={mobileMenuOpen}
+                        onLogout={async () => await supabase.auth.signOut()}
                     />
                     <div className="main-content">
                         {renderPage()}
@@ -920,7 +1067,7 @@
         }
 
         // Sidebar Component
-        function Sidebar({ currentPage, setCurrentPage, mobileOpen }) {
+        function Sidebar({ currentPage, setCurrentPage, mobileOpen, onLogout }) {
             const menuItems = [
                 { id: 'dashboard', label: 'Dashboard', icon: '📊' },
                 { id: 'recipes', label: 'Recipes', icon: '📖' },
@@ -946,7 +1093,8 @@
                                 <span>{item.label}</span>
                             </li>
                         ))}
-                    </ul>
+                   </ul>
+                    <button className="nav-logout" onClick={onLogout}>🚪 Sign Out</button>
                 </nav>
             );
         }
