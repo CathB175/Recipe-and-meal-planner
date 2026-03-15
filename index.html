@@ -820,7 +820,7 @@
 
 <div id="login-screen">
     <div class="login-box">
-        <h1>🍳 RecipeFlow</h1>
+        <h1>🍳 Recipe and Meal Planner/h1>
         <p>Your personal nutrition hub</p>
         <input type="email" id="login-email" placeholder="Email" autocomplete="email" />
         <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
@@ -831,53 +831,49 @@
 
 <div id="root"></div>
     <script>
-    async function initAuth() {
-        const { data: { session } } = await window.supabase.createClient(
-            'https://hebuaabantmnfdxxkaif.supabase.co',
-            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
-        ).auth.getSession();
+const _supabase = supabase.createClient(
+    'https://hebuaabantmnfdxxkaif.supabase.co',
+    'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
+);
 
-        document.getElementById('loading-screen').style.display = 'none';
-
-        if (!session) {
+async function initAuth() {
+    const { data: { session } } = await _supabase.auth.getSession();
+    document.getElementById('loading-screen').style.display = 'none';
+    if (session) {
+        showApp();
+    } else {
+        document.getElementById('login-screen').classList.add('show');
+    }
+    _supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+            document.getElementById('login-screen').classList.remove('show');
+            showApp();
+        } else {
             document.getElementById('login-screen').classList.add('show');
+            document.getElementById('root').innerHTML = '';
         }
+    });
+}
 
-        window.supabase.createClient(
-            'https://hebuaabantmnfdxxkaif.supabase.co',
-            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
-        ).auth.onAuthStateChange((_event, session) => {
-            if (session) {
-                document.getElementById('login-screen').classList.remove('show');
-            } else {
-                document.getElementById('login-screen').classList.add('show');
-                document.getElementById('root').innerHTML = '';
-            }
-        });
+async function handleLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('login-error');
+
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+
+    const { error } = await _supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        errEl.textContent = error.message;
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
     }
-
-    async function handleLogin() {
-        const email    = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-        const btn      = document.getElementById('login-btn');
-        const errEl    = document.getElementById('login-error');
-
-        errEl.style.display = 'none';
-        btn.disabled = true;
-        btn.textContent = 'Signing in...';
-
-        const { error } = await window.supabase.createClient(
-            'https://hebuaabantmnfdxxkaif.supabase.co',
-            'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
-        ).auth.signInWithPassword({ email, password });
-
-        if (error) {
-            errEl.textContent = error.message;
-            errEl.style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = 'Sign In';
-        }
-    }
+}
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && document.getElementById('login-screen').classList.contains('show')) {
@@ -891,9 +887,7 @@
         const { useState, useEffect, useCallback } = React;
 
         // Initialize Supabase client
-        const SUPABASE_URL = 'https://hebuaabantmnfdxxkaif.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = _supabase;
 
         // Utility functions
         const formatDate = (date) => {
