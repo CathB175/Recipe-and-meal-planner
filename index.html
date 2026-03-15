@@ -836,6 +836,11 @@ const _supabase = supabase.createClient(
     'sb_publishable_xzVfo0l-eLpkP4TuUy17KQ_kLLUUScF'
 );
 
+     
+function showApp() {
+    document.getElementById('login-screen').classList.remove('show');
+}﻿
+
 async function initAuth() {
     const { data: { session } } = await _supabase.auth.getSession();
     document.getElementById('loading-screen').style.display = 'none';
