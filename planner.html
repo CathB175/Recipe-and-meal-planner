@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Planner & Ingredient Finder</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+        .header {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
+        .main { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+
+        /* ── SEARCH ── */
+        .search-box {
+            background: white;
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            margin-bottom: 24px;
+        }
+        .search-box h2 { font-size: 16px; font-weight: 700; color: #374151; margin-bottom: 14px; }
+        .search-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .search-input:focus { outline: none; border-color: #14b8a6; }
+        .search-btn {
+            background: #14b8a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .search-btn:hover { background: #0d9488; }
+        .clear-btn {
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ── KEYWORD TAGS ── */
+        .keyword-section { margin-top: 16px; }
+        .keyword-label { font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .keyword-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .keyword-tag {
+            background: #f0fdfa;
+            border: 1.5px solid #14b8a6;
+            color: #0f766e;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .keyword-tag:hover, .keyword-tag.active { background: #14b8a6; color: white; }
+
+        /* ── RESULTS LAYOUT ── */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 800px) { .results-grid { grid-template-columns: 1fr; } }
+
+        /* ── PANEL ── */
+        .panel {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 2px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title { font-size: 15px; font-weight: 700; color: #374151; }
+        .panel-badge {
+            background: #ccfbf1;
+            color: #0f766e;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+        .panel-body { padding: 16px 20px; }
+
+        /* ── RECIPE CARDS ── */
+        .recipe-card {
+            border: 2px solid #f3f4f6;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: border-color 0.15s;
+            position: relative;
+        }
+        .recipe-card:hover { border-color: #14b8a6; }
+        .recipe-card.selected { border-color: #14b8a6; background: #f0fdfa; }
+        .recipe-card h3 { font-size: 15px; font-weight: 700; color: #1a202c; margin-bottom: 6px; padding-right: 60px; }
+        .recipe-card .match { font-size: 13px; color: #0f766e; font-weight: 600; margin-bottom: 4px; }
+        .recipe-card .meta { font-size: 12px; color: #6b7280; display: flex; gap: 10px; flex-wrap: wrap; }
+        .recipe-card .servings-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #e5e7eb;
+            color: #374151;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .recipe-card .collections { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+        .collection-tag {
+            background: #dbeafe;
+            color: #1e40af;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .select-btn {
+            margin-top: 10px;
+            background: #14b8a6;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .select-btn.remove { background: #ef4444; }
+        .empty-state { text-align: center; color: #9ca3af; padding: 32px 16px; font-size: 14px; }
+
+        /* ── PACK SIZE ── */
+        .pack-section {
+            background: #fff7ed;
+            border: 2px solid #fed7aa;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+        .pack-section h4 { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 10px; }
+        .pack-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .pack-input {
+            width: 80px;
+            padding: 8px 10px;
+            border: 2px solid #fed7aa;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .pack-input:focus { outline: none; border-color: #f59e0b; }
+        .pack-unit {
+            width: 120px;
+            padding: 8px 10px;
+            border: 2px solid #fed7aa;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .pack-save-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .pack-info { font-size: 12px; color: #92400e; margin-top: 6px; }
+
+        /* ── COMBINATIONS ── */
+        .combo-section { margin-top: 16px; }
+        .combo-section h4 { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .combo-card {
+            background: #f0fdfa;
+            border: 2px solid #14b8a6;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .combo-title { font-size: 13px; font-weight: 700; color: #0f766e; margin-bottom: 6px; }
+        .combo-recipes { font-size: 13px; color: #374151; line-height: 1.6; }
+        .combo-total { font-size: 12px; color: #6b7280; margin-top: 6px; font-style: italic; }
+        .combo-perfect { background: #ccfbf1; }
+
+        /* ── SELECTED MEALS ── */
+        .selected-section {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            margin-top: 24px;
+            overflow: hidden;
+        }
+        .selected-header {
+            padding: 16px 20px;
+            border-bottom: 2px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .selected-title { font-size: 15px; font-weight: 700; color: #374151; }
+        .generate-btn {
+            background: #14b8a6;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .generate-btn:hover { background: #0d9488; }
+        .selected-body { padding: 16px 20px; }
+        .selected-meals { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .selected-meal-tag {
+            background: #f0fdfa;
+            border: 2px solid #14b8a6;
+            color: #0f766e;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .remove-meal { cursor: pointer; color: #ef4444; font-weight: 700; background: none; border: none; font-size: 14px; }
+
+        /* ── SHOPPING LIST ── */
+        .shopping-list { columns: 2; gap: 24px; }
+        @media (max-width: 600px) { .shopping-list { columns: 1; } }
+        .shopping-group { break-inside: avoid; margin-bottom: 16px; }
+        .shopping-group-title { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .shopping-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+        .shopping-item:last-child { border-bottom: none; }
+        .shopping-amount { font-weight: 700; color: #14b8a6; min-width: 60px; }
+        .shopping-name { color: #1a202c; }
+        .print-btn {
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+        .print-btn:hover { background: #e5e7eb; }
+
+        /* ── LOADING ── */
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #14b8a6; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading { text-align: center; padding: 32px; color: #6b7280; }
+
+        @media print {
+            .header, .search-box, .results-grid, .selected-meals, .generate-btn, .print-btn, .panel-header button { display: none !important; }
+            .selected-section { box-shadow: none; }
+            body { background: white; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>🛒 Meal Planner & Ingredient Finder</h1>
+        <p>Search ingredients, find recipes, plan your week and generate a shopping list</p>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- Search -->
+    <div class="search-box">
+        <h2>🔍 Search by ingredient or keyword</h2>
+        <div class="search-row">
+            <input type="text" class="search-input" id="searchInput"
+                placeholder="e.g. sausages, chicken, eggs..."
+                onkeydown="if(event.key==='Enter') doSearch()">
+            <button class="search-btn" onclick="doSearch()">Search</button>
+            <button class="clear-btn" onclick="clearSearch()">Clear</button>
+        </div>
+        <div class="keyword-section">
+            <div class="keyword-label">Browse by keyword</div>
+            <div class="keyword-tags" id="keywordTags">
+                <span class="loading"><span class="spinner"></span>Loading keywords...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-grid" id="resultsGrid" style="display:none;">
+
+        <!-- Left: Recipe results -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title" id="resultsTitle">Recipes found</div>
+                <span class="panel-badge" id="resultsCount">0</span>
+            </div>
+            <div class="panel-body" id="recipeResults"></div>
+        </div>
+
+        <!-- Right: Pack size + combinations -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Pack size & combinations</div>
+            </div>
+            <div class="panel-body">
+                <div class="pack-section" id="packSection" style="display:none;">
+                    <h4>📦 Pack size for "<span id="packIngredientName"></span>"</h4>
+                    <div class="pack-row">
+                        <input type="number" class="pack-input" id="packSize" placeholder="e.g. 8" min="1">
+                        <input type="text" class="pack-unit" id="packUnit" placeholder="e.g. sausages">
+                        <button class="pack-save-btn" onclick="savePack()">Save</button>
+                    </div>
+                    <div class="pack-info" id="packInfo"></div>
+                </div>
+
+                <div class="combo-section" id="comboSection">
+                    <div class="empty-state">Search for an ingredient to see meal combination suggestions</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Selected meals & shopping list -->
+    <div class="selected-section" id="selectedSection" style="display:none;">
+        <div class="selected-header">
+            <div class="selected-title">🗓️ Selected meals this week (<span id="selectedCount">0</span>)</div>
+            <div style="display:flex; gap:8px;">
+                <button class="generate-btn" onclick="generateShoppingList()">Generate Shopping List</button>
+                <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+                <button class="clear-btn" onclick="clearSelected()">Clear all</button>
+            </div>
+        </div>
+        <div class="selected-body">
+            <div class="selected-meals" id="selectedMeals"></div>
+            <div id="shoppingListOutput"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const SUPABASE_URL = 'YOUR_RECIPEFLOW_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_RECIPEFLOW_ANON_KEY';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allRecipes = [];
+    let ingredientPacks = [];
+    let selectedMeals = [];
+    let currentSearchTerm = '';
+    let currentKeyword = '';
+
+    // ─── INIT ─────────────────────────────────────────────────────────────
+    async function init() {
+        const [recipesRes, packsRes] = await Promise.all([
+            db.from('recipes').select('id, name, servings, collections, keywords, ingredients, nutrition'),
+            db.from('ingredient_packs').select('*')
+        ]);
+        allRecipes = recipesRes.data || [];
+        ingredientPacks = packsRes.data || [];
+        renderKeywords();
+    }
+
+    // ─── KEYWORDS ─────────────────────────────────────────────────────────
+    function renderKeywords() {
+        const allKeywords = new Set();
+        allRecipes.forEach(r => {
+            (r.keywords || []).forEach(k => { if (k) allKeywords.add(k); });
+        });
+        const sorted = [...allKeywords].sort();
+        const container = document.getElementById('keywordTags');
+        if (sorted.length === 0) {
+            container.innerHTML = '<span style="color:#9ca3af; font-size:13px;">No keywords found</span>';
+            return;
+        }
+        container.innerHTML = sorted.map(k =>
+            `<span class="keyword-tag" onclick="searchByKeyword('${k}')">${k}</span>`
+        ).join('');
+    }
+
+    function searchByKeyword(keyword) {
+        currentKeyword = keyword;
+        currentSearchTerm = '';
+        document.getElementById('searchInput').value = '';
+        document.querySelectorAll('.keyword-tag').forEach(t => {
+            t.classList.toggle('active', t.textContent === keyword);
+        });
+        const matches = allRecipes.filter(r => (r.keywords || []).includes(keyword));
+        showResults(matches, `Recipes tagged "${keyword}"`, null);
+    }
+
+    // ─── SEARCH ───────────────────────────────────────────────────────────
+    function doSearch() {
+        const term = document.getElementById('searchInput').value.trim().toLowerCase();
+        if (!term) return;
+        currentSearchTerm = term;
+        currentKeyword = '';
+        document.querySelectorAll('.keyword-tag').forEach(t => t.classList.remove('active'));
+
+        const matches = allRecipes.filter(r => {
+            const ingredients = r.ingredients || [];
+            return ingredients.some(ing =>
+                (ing.item || '').toLowerCase().includes(term)
+            );
+        });
+
+        showResults(matches, `Recipes using "${term}"`, term);
+        showPackSection(term);
+        showCombinations(matches, term);
+    }
+
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('resultsGrid').style.display = 'none';
+        document.querySelectorAll('.keyword-tag').forEach(t => t.classList.remove('active'));
+        currentSearchTerm = '';
+        currentKeyword = '';
+    }
+
+    // ─── RESULTS ──────────────────────────────────────────────────────────
+    function showResults(matches, title, searchTerm) {
+        document.getElementById('resultsGrid').style.display = 'grid';
+        document.getElementById('resultsTitle').textContent = title;
+        document.getElementById('resultsCount').textContent = matches.length;
+
+        const container = document.getElementById('recipeResults');
+        if (matches.length === 0) {
+            container.innerHTML = '<div class="empty-state">No recipes found.<br>Try a different search term.</div>';
+            return;
+        }
+
+        container.innerHTML = matches.map(r => {
+            const isSelected = selectedMeals.some(m => m.id === r.id);
+            let matchHtml = '';
+            if (searchTerm) {
+                const matchingIngredients = (r.ingredients || [])
+                    .filter(ing => (ing.item || '').toLowerCase().includes(searchTerm));
+                if (matchingIngredients.length > 0) {
+                    matchHtml = `<div class="match">Uses: ${matchingIngredients.map(i => `${i.amount} ${i.item}`).join(', ')}</div>`;
+                }
+            }
+            const collections = (r.collections || []).map(c =>
+                `<span class="collection-tag">${c}</span>`).join('');
+            return `<div class="recipe-card ${isSelected ? 'selected' : ''}" id="card-${r.id}">
+                <div class="servings-badge">${r.servings} serving${r.servings !== 1 ? 's' : ''}</div>
+                <h3>${r.name}</h3>
+                ${matchHtml}
+                <div class="meta">
+                    ${r.nutrition ? `<span>🔥 ${Math.round(r.nutrition.calories)} kcal</span>` : ''}
+                    ${r.nutrition ? `<span>💪 ${r.nutrition.protein}g protein</span>` : ''}
+                </div>
+                <div class="collections">${collections}</div>
+                <button class="select-btn ${isSelected ? 'remove' : ''}"
+                    onclick="toggleSelectMeal('${r.id}')">
+                    ${isSelected ? '− Remove from week' : '+ Add to this week'}
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── PACK SIZE ────────────────────────────────────────────────────────
+    function showPackSection(term) {
+        const section = document.getElementById('packSection');
+        section.style.display = 'block';
+        document.getElementById('packIngredientName').textContent = term;
+
+        const existing = ingredientPacks.find(p =>
+            p.ingredient_name.toLowerCase() === term.toLowerCase());
+        if (existing) {
+            document.getElementById('packSize').value = existing.pack_size;
+            document.getElementById('packUnit').value = existing.pack_unit || '';
+            document.getElementById('packInfo').textContent =
+                `Saved: comes in ${existing.pack_size}${existing.pack_unit ? ' ' + existing.pack_unit : ''}`;
+        } else {
+            document.getElementById('packSize').value = '';
+            document.getElementById('packUnit').value = '';
+            document.getElementById('packInfo').textContent = 'No pack size saved yet — add one above';
+        }
+    }
+
+    async function savePack() {
+        const size = parseFloat(document.getElementById('packSize').value);
+        const unit = document.getElementById('packUnit').value.trim();
+        const name = currentSearchTerm;
+        if (!size || !name) return;
+
+        const existing = ingredientPacks.find(p =>
+            p.ingredient_name.toLowerCase() === name.toLowerCase());
+
+        if (existing) {
+            const { data } = await db.from('ingredient_packs')
+                .update({ pack_size: size, pack_unit: unit })
+                .eq('id', existing.id).select().single();
+            ingredientPacks = ingredientPacks.map(p => p.id === existing.id ? data : p);
+        } else {
+            const { data } = await db.from('ingredient_packs')
+                .insert({ ingredient_name: name, pack_size: size, pack_unit: unit })
+                .select().single();
+            ingredientPacks.push(data);
+        }
+
+        document.getElementById('packInfo').textContent =
+            `✓ Saved: comes in ${size}${unit ? ' ' + unit : ''}`;
+        showCombinations(
+            allRecipes.filter(r => (r.ingredients || []).some(i =>
+                (i.item || '').toLowerCase().includes(name))), name);
+    }
+
+    // ─── COMBINATIONS ─────────────────────────────────────────────────────
+    function showCombinations(matches, term) {
+        const container = document.getElementById('comboSection');
+        if (matches.length === 0) {
+            container.innerHTML = '<div class="empty-state">No recipes found to combine</div>';
+            return;
+        }
+
+        const pack = ingredientPacks.find(p =>
+            p.ingredient_name.toLowerCase() === term.toLowerCase());
+
+        // Get quantities used per recipe
+        const recipeQuantities = matches.map(r => {
+            const matchingIngs = (r.ingredients || []).filter(i =>
+                (i.item || '').toLowerCase().includes(term));
+            const totalQty = matchingIngs.reduce((sum, i) => {
+                const num = parseFloat(i.amount);
+                return sum + (isNaN(num) ? 0 : num);
+            }, 0);
+            return { recipe: r, qty: totalQty, amountStr: matchingIngs.map(i => i.amount).join(', ') };
+        }).filter(r => r.qty > 0 || r.amountStr);
+
+        let html = '<div class="combo-section">';
+        html += '<h4>Recipe quantities</h4>';
+
+        recipeQuantities.forEach(rq => {
+            html += `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:13px;">
+                <span>${rq.recipe.name}</span>
+                <span style="font-weight:700; color:#14b8a6;">${rq.amountStr}</span>
+            </div>`;
+        });
+
+        if (pack && recipeQuantities.some(r => r.qty > 0)) {
+            html += '<h4 style="margin-top:16px;">Pack combinations</h4>';
+            const packSize = pack.pack_size;
+            const combos = findCombinations(recipeQuantities, packSize);
+
+            if (combos.length === 0) {
+                html += '<div style="font-size:13px; color:#6b7280; padding:8px 0;">No exact combinations found for this pack size.</div>';
+            } else {
+                combos.slice(0, 5).forEach(combo => {
+                    const isPerfect = Math.abs(combo.total - packSize) < 0.01;
+                    html += `<div class="combo-card ${isPerfect ? 'combo-perfect' : ''}">
+                        <div class="combo-title">${isPerfect ? '✓ Perfect pack use' : `Uses ${combo.total} of ${packSize}`}</div>
+                        <div class="combo-recipes">${combo.recipes.map(r => `• ${r.recipe.name} (${r.amountStr})`).join('<br>')}</div>
+                        <div class="combo-total">Total: ${combo.total} ${pack.pack_unit || ''} from a pack of ${packSize}</div>
+                    </div>`;
+                });
+            }
+        } else if (!pack) {
+            html += '<div style="margin-top:12px; font-size:13px; color:#92400e; background:#fff7ed; padding:10px; border-radius:8px;">💡 Save a pack size above to see combination suggestions</div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function findCombinations(recipeQuantities, packSize) {
+        const withQty = recipeQuantities.filter(r => r.qty > 0);
+        const results = [];
+
+        // Try all combinations of 2-4 recipes
+        for (let i = 0; i < withQty.length; i++) {
+            // Single recipe
+            if (Math.abs(withQty[i].qty - packSize) < 0.01) {
+                results.push({ recipes: [withQty[i]], total: withQty[i].qty, diff: 0 });
+            }
+            for (let j = i + 1; j < withQty.length; j++) {
+                const total2 = withQty[i].qty + withQty[j].qty;
+                results.push({ recipes: [withQty[i], withQty[j]], total: total2, diff: Math.abs(total2 - packSize) });
+                for (let k = j + 1; k < withQty.length; k++) {
+                    const total3 = total2 + withQty[k].qty;
+                    results.push({ recipes: [withQty[i], withQty[j], withQty[k]], total: total3, diff: Math.abs(total3 - packSize) });
+                    for (let l = k + 1; l < withQty.length; l++) {
+                        const total4 = total3 + withQty[l].qty;
+                        results.push({ recipes: [withQty[i], withQty[j], withQty[k], withQty[l]], total: total4, diff: Math.abs(total4 - packSize) });
+                    }
+                }
+            }
+        }
+
+        // Sort by closest to pack size, perfect matches first
+        return results
+            .filter(r => r.total <= packSize * 1.1) // don't show combos way over pack size
+            .sort((a, b) => a.diff - b.diff);
+    }
+
+    // ─── SELECTED MEALS ───────────────────────────────────────────────────
+    function toggleSelectMeal(id) {
+        const recipe = allRecipes.find(r => r.id === id);
+        if (!recipe) return;
+        const existing = selectedMeals.findIndex(m => m.id === id);
+        if (existing > -1) {
+            selectedMeals.splice(existing, 1);
+        } else {
+            selectedMeals.push(recipe);
+        }
+        renderSelectedMeals();
+        // Refresh results if showing
+        if (currentSearchTerm) {
+            const matches = allRecipes.filter(r =>
+                (r.ingredients || []).some(i => (i.item || '').toLowerCase().includes(currentSearchTerm)));
+            showResults(matches, `Recipes using "${currentSearchTerm}"`, currentSearchTerm);
+        } else if (currentKeyword) {
+            const matches = allRecipes.filter(r => (r.keywords || []).includes(currentKeyword));
+            showResults(matches, `Recipes tagged "${currentKeyword}"`, null);
+        }
+    }
+
+    function renderSelectedMeals() {
+        const section = document.getElementById('selectedSection');
+        section.style.display = selectedMeals.length > 0 ? 'block' : 'none';
+        document.getElementById('selectedCount').textContent = selectedMeals.length;
+        document.getElementById('selectedMeals').innerHTML = selectedMeals.map(m =>
+            `<div class="selected-meal-tag">
+                ${m.name}
+                <button class="remove-meal" onclick="toggleSelectMeal('${m.id}')">×</button>
+            </div>`).join('');
+        document.getElementById('shoppingListOutput').innerHTML = '';
+    }
+
+    function clearSelected() {
+        selectedMeals = [];
+        renderSelectedMeals();
+    }
+
+    // ─── SHOPPING LIST ────────────────────────────────────────────────────
+    function generateShoppingList() {
+        if (selectedMeals.length === 0) return;
+
+        // Aggregate all ingredients
+        const aggregated = {};
+        selectedMeals.forEach(recipe => {
+            (recipe.ingredients || []).forEach(ing => {
+                if (!ing.item || !ing.item.trim()) return;
+                const key = ing.item.toLowerCase().trim();
+                if (!aggregated[key]) {
+                    aggregated[key] = { name: ing.item.trim(), amounts: [], collection: (recipe.collections || ['Other'])[0] };
+                }
+                if (ing.amount) aggregated[key].amounts.push(ing.amount);
+            });
+        });
+
+        // Group by collection/category
+        const byCollection = {};
+        Object.values(aggregated).forEach(ing => {
+            const col = ing.collection || 'Other';
+            if (!byCollection[col]) byCollection[col] = [];
+            byCollection[col].push(ing);
+        });
+
+        let html = '<div class="shopping-list">';
+        Object.entries(byCollection).sort().forEach(([col, items]) => {
+            html += `<div class="shopping-group">
+                <div class="shopping-group-title">${col}</div>
+                ${items.sort((a,b) => a.name.localeCompare(b.name)).map(ing =>
+                    `<div class="shopping-item">
+                        <span class="shopping-amount">${ing.amounts.join(' + ')}</span>
+                        <span class="shopping-name">${ing.name}</span>
+                    </div>`).join('')}
+            </div>`;
+        });
+        html += '</div>';
+
+        document.getElementById('shoppingListOutput').innerHTML =
+            `<div style="border-top: 2px solid #f3f4f6; padding-top: 16px; margin-top: 8px;">
+                <div style="font-size:15px; font-weight:700; color:#374151; margin-bottom:14px;">🛒 Shopping List</div>
+                ${html}
+            </div>`;
+    }
+
+    init();
+</script>
+</body>
+</html>
