@@ -954,7 +954,10 @@
         // Dashboard Component
         function Dashboard({ recipes, mealPlans, dailyExtras, nutritionGoals }) {
             const today = formatDate(new Date());
-            const todaysMeals = mealPlans.filter(mp => mp.date?.split('T')[0] === today);
+console.log('Today:', today);
+console.log('All meal plans:', mealPlans);
+console.log('Todays meals:', mealPlans.filter(mp => mp.date === today));
+const todaysMeals = mealPlans.filter(mp => mp.date === today);
             const todaysExtras = dailyExtras.filter(de => de.date === today);
 
             const getMealNutrition = (meal) => {
