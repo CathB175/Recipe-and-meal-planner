@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecipeFlow - Test 2</title>
+    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <style>
+        :root {
+            --primary: #1a5f3d;
+            --primary-dark: #0f3d28;
+            --bg: #faf8f5;
+            --surface: #ffffff;
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+            --border: #e8e4df;
+            --shadow: rgba(26, 95, 61, 0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); }
+        .header-bar { background: var(--primary-dark); color: white; padding: 1.25rem 2rem; font-size: 1.5rem; font-weight: bold; }
+        .main-content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        .search-input { width: 100%; padding: 1rem; border: 2px solid var(--border); border-radius: 12px; font-size: 1rem; margin-bottom: 1.5rem; }
+        .status { color: var(--text-light); margin-bottom: 1rem; }
+        .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+        .recipe-card { background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px var(--shadow); cursor: pointer; }
+        .recipe-image { width: 100%; height: 160px; object-fit: cover; background: linear-gradient(135deg, #2d8659, var(--primary)); }
+        .recipe-content { padding: 1rem; }
+        .recipe-name { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.5rem; }
+        .recipe-meta { font-size: 0.85rem; color: var(--text-light); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .modal { background: var(--surface); border-radius: 16px; padding: 2rem; max-width: 700px; max-height: 85vh; overflow-y: auto; width: 100%; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .ingredient-row { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+        .step-row { margin-bottom: 0.75rem; }
+    </style>
+</head>
+<body>
+    <div id="root">Loading...</div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const SUPABASE_URL = 'YOUR_RECIPEFLOW_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_RECIPEFLOW_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function App() {
+            const [recipes, setRecipes] = useState([]);
+            const [status, setStatus] = useState('loading');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [viewingRecipe, setViewingRecipe] = useState(null);
+
+            useEffect(() => {
+                supabase.from('recipes').select('*').then((result) => {
+                    if (result.error) {
+                        setStatus('error: ' + result.error.message);
+                    } else {
+                        setRecipes(result.data);
+                        setStatus('loaded');
+                    }
+                });
+            }, []);
+
+            const filteredRecipes = recipes.filter((r) => {
+                if (!searchTerm) return true;
+                return r.name.toLowerCase().includes(searchTerm.toLowerCase());
+            });
+
+            return (
+                <div>
+                    <div className="header-bar">🍳 RecipeFlow</div>
+                    <div className="main-content">
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Search recipes..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <div className="status">Status: {status} — showing {filteredRecipes.length} of {recipes.length} recipes</div>
+
+                        <div className="recipe-grid">
+                            {filteredRecipes.map((recipe) => (
+                                <div key={recipe.id} className="recipe-card" onClick={() => setViewingRecipe(recipe)}>
+                                    {recipe.image_url ? (
+                                        <img src={recipe.image_url} alt={recipe.name} className="recipe-image" />
+                                    ) : (
+                                        <div className="recipe-image"></div>
+                                    )}
+                                    <div className="recipe-content">
+                                        <div className="recipe-name">{recipe.name}</div>
+                                        <div className="recipe-meta">
+                                            {recipe.nutrition && recipe.nutrition.calories ? recipe.nutrition.calories + ' cal' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {viewingRecipe && (
+                        <RecipeDetail recipe={viewingRecipe} onClose={() => setViewingRecipe(null)} />
+                    )}
+                </div>
+            );
+        }
+
+        function RecipeDetail({ recipe, onClose }) {
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>{recipe.name}</h2>
+                            <button className="close-btn" onClick={onClose}>✕</button>
+                        </div>
+
+                        {recipe.image_url && (
+                            <img src={recipe.image_url} alt={recipe.name} style={{ width: '100%', borderRadius: '8px', marginBottom: '1rem' }} />
+                        )}
+
+                        {recipe.ingredients && recipe.ingredients.length > 0 && (
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <h3 style={{ marginBottom: '0.5rem' }}>Ingredients</h3>
+                                {recipe.ingredients.map((ing, idx) => (
+                                    <div key={idx} className="ingredient-row">
+                                        <strong>{ing.amount}</strong> {ing.item}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {recipe.steps && recipe.steps.length > 0 && (
+                            <div>
+                                <h3 style={{ marginBottom: '0.5rem' }}>Steps</h3>
+                                {recipe.steps.map((step, idx) => (
+                                    <div key={idx} className="step-row">{idx + 1}. {step}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
