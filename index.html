@@ -382,7 +382,7 @@
         }
 
         function RecipeForm({ recipe, onClose, onSave }) {
-            const [formData, setFormData] = useState(recipe || {
+            const [formData, setFormData] = useState(recipe ? { ...recipe, nutrition: recipe.nutrition || {} } : {
                 name: '', servings: 1, prep_time: null, cook_time: null, source: '', image_url: '',
                 collections: [], keywords: [], ingredients: [], steps: [], notes: '',
                 nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, salt: 0 },
@@ -424,15 +424,9 @@
                     ingredients: Array.isArray(formData.ingredients) ? formData.ingredients : [],
                     steps: Array.isArray(formData.steps) ? formData.steps : [],
                     notes: formData.notes || '',
-                    nutrition: {
-                        calories: parseFloat(formData.nutrition.calories) || 0,
-                        protein: parseFloat(formData.nutrition.protein) || 0,
-                        carbs: parseFloat(formData.nutrition.carbs) || 0,
-                        fat: parseFloat(formData.nutrition.fat) || 0,
-                        fiber: parseFloat(formData.nutrition.fiber) || 0,
-                        sugar: parseFloat(formData.nutrition.sugar) || 0,
-                        salt: parseFloat(formData.nutrition.salt) || 0
-                    },
+                    nutrition: Object.values(formData.nutrition || {}).some((value) => value !== '' && value !== null && value !== undefined)
+                        ? Object.fromEntries(Object.entries(formData.nutrition).filter(([, value]) => value !== '' && value !== null && value !== undefined).map(([key, value]) => [key, Number(value)]))
+                        : null,
                     is_simple: Boolean(formData.is_simple)
                 };
 
@@ -502,21 +496,21 @@
                         <div className="form-row">
                             <div className="input-group">
                                 <label className="input-label">Calories</label>
-                                <input type="number" className="input-field" value={formData.nutrition.calories} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, calories: e.target.value } })} />
+                                <input type="number" className="input-field" value={formData.nutrition.calories ?? ''} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, calories: e.target.value } })} />
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Protein (g)</label>
-                                <input type="number" className="input-field" value={formData.nutrition.protein} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, protein: e.target.value } })} />
+                                <input type="number" className="input-field" value={formData.nutrition.protein ?? ''} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, protein: e.target.value } })} />
                             </div>
                         </div>
                         <div className="form-row">
                             <div className="input-group">
                                 <label className="input-label">Carbs (g)</label>
-                                <input type="number" className="input-field" value={formData.nutrition.carbs} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, carbs: e.target.value } })} />
+                                <input type="number" className="input-field" value={formData.nutrition.carbs ?? ''} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, carbs: e.target.value } })} />
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Fat (g)</label>
-                                <input type="number" className="input-field" value={formData.nutrition.fat} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, fat: e.target.value } })} />
+                                <input type="number" className="input-field" value={formData.nutrition.fat ?? ''} onChange={(e) => setFormData({ ...formData, nutrition: { ...formData.nutrition, fat: e.target.value } })} />
                             </div>
                         </div>
 
