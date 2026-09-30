@@ -31,7 +31,8 @@
         .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
-        .action-buttons { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .btn:disabled { opacity: 0.6; cursor: wait; }
         .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
         .recipe-card { background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px var(--shadow); cursor: pointer; }
         .recipe-image { width: 100%; height: 160px; object-fit: cover; background: linear-gradient(135deg, #2d8659, var(--primary)); }
@@ -74,6 +75,8 @@
             const [editingRecipe, setEditingRecipe] = useState(null);
             const [selectedCollection, setSelectedCollection] = useState('all');
             const [selectedKeyword, setSelectedKeyword] = useState('');
+            const [showArchived, setShowArchived] = useState(false);
+            const [archivePending, setArchivePending] = useState(false);
 
             const loadRecipes = () => {
                 supabase.from('recipes').select('*').then((result) => {
@@ -88,11 +91,12 @@
 
             useEffect(() => { loadRecipes(); }, []);
 
-            const allCollections = [...new Set(recipes.flatMap((r) => r.collections || []))].sort();
+            const visibleRecipes = recipes.filter((r) => Boolean(r.archived) === showArchived);
+            const allCollections = [...new Set(visibleRecipes.flatMap((r) => r.collections || []))].sort();
 
-            const getCollectionCount = (collection) => recipes.filter((r) => r.collections && r.collections.includes(collection)).length;
+            const getCollectionCount = (collection) => visibleRecipes.filter((r) => r.collections && r.collections.includes(collection)).length;
 
-            const filteredRecipes = recipes.filter((r) => {
+            const filteredRecipes = visibleRecipes.filter((r) => {
                 const matchesSearch = !searchTerm ||
                     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (r.keywords && r.keywords.some((k) => k.toLowerCase().includes(searchTerm.toLowerCase())));
@@ -108,6 +112,23 @@
                 await supabase.from('recipes').delete().eq('id', id);
                 setViewingRecipe(null);
                 loadRecipes();
+            };
+
+            const handleArchive = async (recipe) => {
+                if (archivePending) return;
+                setArchivePending(true);
+                try {
+                    const archived = !recipe.archived;
+                    const { data, error } = await supabase.from('recipes')
+                        .update({ archived }).eq('id', recipe.id).select('id, archived').single();
+                    if (error) throw error;
+                    setRecipes((current) => current.map((r) => r.id === data.id ? { ...r, archived: data.archived } : r));
+                    setViewingRecipe(null);
+                } catch (error) {
+                    alert('Could not ' + (recipe.archived ? 'restore' : 'archive') + ' recipe: ' + error.message);
+                } finally {
+                    setArchivePending(false);
+                }
             };
 
             const handleDuplicate = async (recipe) => {
@@ -203,7 +224,19 @@
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <div className="status">Status: {status} — showing {filteredRecipes.length} of {recipes.length} recipes</div>
+                        <div className="status">Status: {status} — showing {filteredRecipes.length} of {visibleRecipes.length} {showArchived ? 'archived' : 'active'} recipes</div>
+
+                        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={showArchived} onChange={(e) => {
+                                setShowArchived(e.target.checked);
+                                setSearchTerm('');
+                                setSelectedCollection('all');
+                                setSelectedKeyword('');
+                                setViewingRecipe(null);
+                            }} />
+                            Show archived recipes
+                        </label>
+                        {showArchived && <p style={{ marginBottom: '1rem' }}>Archived recipes are kept here. Open a recipe and choose Restore to return it to your collection.</p>}
 
                         <div className="action-buttons">
                             <button className="btn btn-primary" onClick={() => { setEditingRecipe(null); setShowFormModal(true); }}>+ Add Recipe</button>
@@ -220,7 +253,7 @@
                                     onClick={() => { setSelectedCollection('all'); setSelectedKeyword(''); }}
                                     style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
                                 >
-                                    All ({recipes.length})
+                                    All ({visibleRecipes.length})
                                 </button>
                                 {allCollections.map((collection) => (
                                     <button
@@ -290,6 +323,9 @@
                                 </div>
                             ))}
                         </div>
+                        {status === 'loaded' && filteredRecipes.length === 0 && (
+                            <p style={{ marginTop: '1rem' }}>{showArchived ? 'No archived recipes match this view.' : 'No recipes match this view.'}</p>
+                        )}
                     </div>
 
                     {viewingRecipe && (
@@ -299,6 +335,8 @@
                             onEdit={() => { setEditingRecipe(viewingRecipe); setViewingRecipe(null); setShowFormModal(true); }}
                             onDelete={() => handleDelete(viewingRecipe.id)}
                             onDuplicate={() => handleDuplicate(viewingRecipe)}
+                            onArchive={() => handleArchive(viewingRecipe)}
+                            archivePending={archivePending}
                         />
                     )}
 
@@ -313,7 +351,7 @@
             );
         }
 
-        function RecipeDetail({ recipe, onClose, onEdit, onDelete, onDuplicate }) {
+        function RecipeDetail({ recipe, onClose, onEdit, onDelete, onDuplicate, onArchive, archivePending }) {
             const handlePrint = () => {
                 const printWindow = window.open('', '', 'width=800,height=600');
                 let ingredientsHtml = '';
@@ -371,6 +409,9 @@
                         )}
 
                         <div className="action-buttons" style={{ marginBottom: 0, flexWrap: 'wrap' }}>
+                            <button className="btn btn-secondary" onClick={onArchive} disabled={archivePending}>
+                                {archivePending ? 'Saving…' : recipe.archived ? '↩️ Restore' : '📦 Archive'}
+                            </button>
                             <button className="btn btn-primary" onClick={onEdit}>✏️ Edit</button>
                             <button className="btn btn-secondary" onClick={onDuplicate}>📋 Duplicate</button>
                             <button className="btn btn-secondary" onClick={handlePrint}>🖨️ Print</button>

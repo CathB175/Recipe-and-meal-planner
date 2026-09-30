@@ -394,7 +394,7 @@
     // ─── INIT ─────────────────────────────────────────────────────────────
     async function init() {
         const [recipesRes, packsRes] = await Promise.all([
-            db.from('recipes').select('id, name, servings, collections, keywords, ingredients, nutrition'),
+            db.from('recipes').select('id, name, servings, collections, keywords, ingredients, nutrition').eq('archived', false),
             db.from('ingredient_packs').select('*')
         ]);
         allRecipes = recipesRes.data || [];

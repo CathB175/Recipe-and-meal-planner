@@ -12,6 +12,7 @@ A comprehensive recipe and nutrition management web application with Supabase ba
 - Collections and keyword organization
 - Search functionality
 - Import/Export recipes via JSON
+- Archive recipes without deleting their data; restore them from the archived view
 
 🍽️ **Meal Planning**
 - 2-week rolling meal plan (starts from Monday)
@@ -68,6 +69,7 @@ CREATE TABLE recipes (
   notes TEXT,
   nutrition JSONB,
   is_simple BOOLEAN DEFAULT false,
+  archived BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -186,6 +188,12 @@ Your app will be available at: `https://[your-username].github.io/[repo-name]/`
 3. Only fill in name and nutrition
 4. No ingredients/steps required
 5. Save
+
+### Archiving recipes
+
+Open a recipe and choose **Archive** to hide it from normal browsing, collection counts, searches and the ingredient finder/meal-selection lists. Tick **Show archived recipes** on the RecipeFlow page to browse only archived recipes, then open one and choose **Restore** to make it available again. Editing an archived recipe keeps it archived. JSON exports include all recipes and their archive status so backups remain complete. Existing saved meal references remain intact.
+
+For an existing database, apply `supabase/migrations/20260930_add_recipe_archived.sql` before deploying these pages.
 
 ### Meal Planning
 
