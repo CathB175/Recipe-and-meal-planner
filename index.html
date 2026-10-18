@@ -73,8 +73,8 @@
             const [viewingRecipe, setViewingRecipe] = useState(null);
             const [showFormModal, setShowFormModal] = useState(false);
             const [editingRecipe, setEditingRecipe] = useState(null);
-            const [selectedCollection, setSelectedCollection] = useState('all');
-            const [selectedKeyword, setSelectedKeyword] = useState('');
+            const [selectedCollections, setSelectedCollections] = useState([]);
+            const [selectedKeywords, setSelectedKeywords] = useState([]);
             const [showArchived, setShowArchived] = useState(false);
             const [archivePending, setArchivePending] = useState(false);
 
@@ -93,6 +93,8 @@
 
             const visibleRecipes = recipes.filter((r) => Boolean(r.archived) === showArchived);
             const allCollections = [...new Set(visibleRecipes.flatMap((r) => r.collections || []))].sort();
+            const allKeywords = [...new Set(visibleRecipes.flatMap((r) => r.keywords || []))].sort();
+            const toggleFilter = (value, setter) => setter((previous) => previous.includes(value) ? previous.filter((item) => item !== value) : [...previous, value]);
 
             const getCollectionCount = (collection) => visibleRecipes.filter((r) => r.collections && r.collections.includes(collection)).length;
 
@@ -100,10 +102,10 @@
                 const matchesSearch = !searchTerm ||
                     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (r.keywords && r.keywords.some((k) => k.toLowerCase().includes(searchTerm.toLowerCase())));
-                const matchesCollection = selectedCollection === 'all' ||
-                    (r.collections && r.collections.includes(selectedCollection));
-                const matchesKeyword = !selectedKeyword ||
-                    (r.keywords && r.keywords.includes(selectedKeyword));
+                const matchesCollection = selectedCollections.length === 0 ||
+                    selectedCollections.some((collection) => (r.collections || []).includes(collection));
+                const matchesKeyword = selectedKeywords.length === 0 ||
+                    selectedKeywords.some((keyword) => (r.keywords || []).includes(keyword));
                 return matchesSearch && matchesCollection && matchesKeyword;
             });
 
@@ -230,8 +232,8 @@
                             <input type="checkbox" checked={showArchived} onChange={(e) => {
                                 setShowArchived(e.target.checked);
                                 setSearchTerm('');
-                                setSelectedCollection('all');
-                                setSelectedKeyword('');
+                                setSelectedCollections([]);
+                                setSelectedKeywords([]);
                                 setViewingRecipe(null);
                             }} />
                             Show archived recipes
@@ -248,39 +250,44 @@
                         {allCollections.length > 0 && (
                             <div className="filter-bar">
                                 <span style={{ fontWeight: '600', marginRight: '0.5rem' }}>Collections:</span>
-                                <button
-                                    className={'btn ' + (selectedCollection === 'all' ? 'btn-primary' : 'btn-secondary')}
-                                    onClick={() => { setSelectedCollection('all'); setSelectedKeyword(''); }}
-                                    style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
-                                >
-                                    All ({visibleRecipes.length})
-                                </button>
+                                <button className={'btn ' + (selectedCollections.length === 0 ? 'btn-primary' : 'btn-secondary')}
+                                    onClick={() => setSelectedCollections([])} style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>All ({visibleRecipes.length})</button>
                                 {allCollections.map((collection) => (
-                                    <button
-                                        key={collection}
-                                        className={'btn ' + (selectedCollection === collection ? 'btn-primary' : 'btn-secondary')}
-                                        onClick={() => { setSelectedCollection(collection); setSelectedKeyword(''); }}
-                                        style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}
-                                    >
+                                    <button key={collection} aria-pressed={selectedCollections.includes(collection)}
+                                        className={'btn ' + (selectedCollections.includes(collection) ? 'btn-primary' : 'btn-secondary')}
+                                        onClick={() => toggleFilter(collection, setSelectedCollections)}
+                                        style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
                                         {collection} ({getCollectionCount(collection)})
                                     </button>
                                 ))}
                             </div>
                         )}
-
-                        {(selectedCollection !== 'all' || selectedKeyword) && (
+                        {allKeywords.length > 0 && (
+                            <div className="filter-bar">
+                                <span style={{ fontWeight: '600', marginRight: '0.5rem' }}>Keywords:</span>
+                                <button className={'btn ' + (selectedKeywords.length === 0 ? 'btn-primary' : 'btn-secondary')}
+                                    onClick={() => setSelectedKeywords([])} style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>All</button>
+                                {allKeywords.map((keyword) => (
+                                    <button key={keyword} aria-pressed={selectedKeywords.includes(keyword)}
+                                        className={'btn ' + (selectedKeywords.includes(keyword) ? 'btn-primary' : 'btn-secondary')}
+                                        onClick={() => toggleFilter(keyword, setSelectedKeywords)}
+                                        style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>{keyword}</button>
+                                ))}
+                            </div>
+                        )}
+                        {(selectedCollections.length > 0 || selectedKeywords.length > 0) && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>Active filters:</span>
-                                {selectedCollection !== 'all' && (
-                                    <span className="badge badge-primary" style={{ cursor: 'pointer' }} onClick={() => setSelectedCollection('all')}>
-                                        {selectedCollection} ✕
-                                    </span>
-                                )}
-                                {selectedKeyword && (
-                                    <span className="badge badge-accent" style={{ cursor: 'pointer' }} onClick={() => setSelectedKeyword('')}>
-                                        {selectedKeyword} ✕
-                                    </span>
-                                )}
+                                {selectedCollections.map((collection) => (
+                                    <button key={'collection-' + collection} className="badge badge-primary"
+                                        onClick={() => toggleFilter(collection, setSelectedCollections)}>{collection} ✕</button>
+                                ))}
+                                {selectedKeywords.map((keyword) => (
+                                    <button key={'keyword-' + keyword} className="badge badge-accent"
+                                        onClick={() => toggleFilter(keyword, setSelectedKeywords)}>{keyword} ✕</button>
+                                ))}
+                                <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem' }}
+                                    onClick={() => { setSelectedCollections([]); setSelectedKeywords([]); }}>Clear filters</button>
                             </div>
                         )}
 
@@ -310,7 +317,7 @@
                                                     <span
                                                         key={idx}
                                                         className="badge badge-accent"
-                                                        onClick={(e) => { e.stopPropagation(); setSelectedKeyword(keyword); setSelectedCollection('all'); }}
+                                                        onClick={(e) => { e.stopPropagation(); toggleFilter(keyword, setSelectedKeywords); }}
                                                         style={{ cursor: 'pointer' }}
                                                         title={'Filter by ' + keyword}
                                                     >
