@@ -99,9 +99,17 @@
             const getCollectionCount = (collection) => visibleRecipes.filter((r) => r.collections && r.collections.includes(collection)).length;
 
             const filteredRecipes = visibleRecipes.filter((r) => {
-                const matchesSearch = !searchTerm ||
-                    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (r.keywords && r.keywords.some((k) => k.toLowerCase().includes(searchTerm.toLowerCase())));
+                const query = searchTerm.trim().toLowerCase();
+                const matchesSearch = !query ||
+                    (r.name || '').toLowerCase().includes(query) ||
+                    (r.keywords || []).some((k) => String(k).toLowerCase().includes(query)) ||
+                    (r.ingredients || []).some((ingredient) =>
+                        typeof ingredient === 'string'
+                            ? ingredient.toLowerCase().includes(query)
+                            : [ingredient?.item, ingredient?.amount].some((value) =>
+                                String(value || '').toLowerCase().includes(query)
+                            )
+                    );
                 const matchesCollection = selectedCollections.length === 0 ||
                     selectedCollections.some((collection) => (r.collections || []).includes(collection));
                 const matchesKeyword = selectedKeywords.length === 0 ||
@@ -222,7 +230,7 @@
                         <input
                             type="text"
                             className="search-input"
-                            placeholder="Search recipes..."
+                            placeholder="Search recipe names, ingredients or keywords..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
