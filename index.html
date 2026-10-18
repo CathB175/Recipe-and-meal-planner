@@ -409,7 +409,7 @@
 
                         {nutritionFields.length > 0 && (
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ marginBottom: '0.5rem' }}>Nutrition {recipe.servings ? '(per serving, if entered that way)' : ''}</h3>
+                                <h3 style={{ marginBottom: '0.5rem' }}>Nutrition – My Portion</h3>
                                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                     {nutritionFields.map(([label, key, unit]) => (
                                         <span key={key}><strong>{label}:</strong> {nutrition[key]} {unit}</span>
