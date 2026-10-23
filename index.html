@@ -75,6 +75,7 @@
             const [editingRecipe, setEditingRecipe] = useState(null);
             const [selectedCollections, setSelectedCollections] = useState([]);
             const [selectedKeywords, setSelectedKeywords] = useState([]);
+            const [filtersExpanded, setFiltersExpanded] = useState(false);
             const [showArchived, setShowArchived] = useState(false);
             const [archivePending, setArchivePending] = useState(false);
 
@@ -255,6 +256,13 @@
                             <button className="btn btn-secondary" onClick={handleExport}>📤 Export</button>
                         </div>
 
+                        <div style={{ marginBottom: '1rem' }}>
+                            <button className="btn btn-secondary" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded} style={{ padding: '0.55rem 1rem' }}>
+                                {filtersExpanded ? '▲ Hide filters' : '▼ Show filters'}{selectedCollections.length + selectedKeywords.length > 0 ? ' (' + (selectedCollections.length + selectedKeywords.length) + ' selected)' : ''}
+                            </button>
+                        </div>
+                        {filtersExpanded && (
+                            <React.Fragment>
                         {allCollections.length > 0 && (
                             <div className="filter-bar">
                                 <span style={{ fontWeight: '600', marginRight: '0.5rem' }}>Collections:</span>
@@ -282,6 +290,8 @@
                                         style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>{keyword}</button>
                                 ))}
                             </div>
+                        )}
+                            </React.Fragment>
                         )}
                         {(selectedCollections.length > 0 || selectedKeywords.length > 0) && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
