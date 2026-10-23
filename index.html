@@ -267,9 +267,6 @@
                         </label>
                         {showArchived && <p style={{ marginBottom: '1rem' }}>Archived recipes are kept here. Open a recipe and choose Restore to return it to your collection.</p>}
 
-                        <div className="action-buttons">
-                            <button className="btn btn-primary" onClick={() => { setEditingRecipe(null); setShowFormModal(true); }}>+ Add Recipe</button>
-                        </div>
                         <div style={{ marginBottom: '1rem' }}>
                             <button className="btn btn-secondary" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded} style={{ padding: '0.55rem 1rem' }}>
                                 {filtersExpanded ? '▲ Hide keywords' : '▼ Show keywords'}{selectedKeywords.length > 0 ? ' (' + selectedKeywords.length + ' selected)' : ''}
