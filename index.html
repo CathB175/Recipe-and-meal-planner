@@ -28,7 +28,7 @@
         .main-content { padding: 1.5rem 2rem; max-width: 1280px; margin: 0 auto; }
         .recipe-toolbar { display: flex; align-items: stretch; gap: 0.75rem; margin-bottom: 1rem; }
         .recipe-toolbar .search-input { flex: 1; min-width: 0; margin-bottom: 0; }
-        .recipe-toolbar .btn { white-space: nowrap; }
+        .recipe-toolbar .btn { white-space: nowrap; } .recipe-toolbar .keywords-toggle { margin-left: auto; }
         @media (max-width: 540px) { .recipe-toolbar { flex-direction: column; } .recipe-toolbar .btn { width: 100%; } .main-content { padding: 1rem; } }
         .search-input { width: 100%; padding: 1rem; border: 2px solid var(--border); border-radius: 12px; font-size: 1rem; margin-bottom: 1rem; }
         .status { color: var(--text-light); margin-bottom: 1rem; }
@@ -256,6 +256,9 @@
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                         <button className="btn btn-primary" onClick={() => { setEditingRecipe(null); setShowFormModal(true); }}>+ Add Recipe</button>
+                        <button className="btn btn-secondary keywords-toggle" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded}>
+                            {filtersExpanded ? '▲ Hide keywords' : '☷ Keywords ▾'}{selectedKeywords.length > 0 ? ' (' + selectedKeywords.length + ')' : ''}
+                        </button>
                         </div>
                         <div className="status">Status: {status} — showing {filteredRecipes.length} of {visibleRecipes.length} {showArchived ? 'archived' : 'active'} recipes</div>
 
@@ -271,11 +274,6 @@
                         </label>
                         {showArchived && <p style={{ marginBottom: '1rem' }}>Archived recipes are kept here. Open a recipe and choose Restore to return it to your collection.</p>}
 
-                        <div style={{ marginBottom: '1rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded} style={{ padding: '0.55rem 1rem' }}>
-                                {filtersExpanded ? '▲ Hide keywords' : '▼ Show keywords'}{selectedKeywords.length > 0 ? ' (' + selectedKeywords.length + ' selected)' : ''}
-                            </button>
-                        </div>
                         {filtersExpanded && (
                             <React.Fragment>
                         {allKeywords.length > 0 && (
