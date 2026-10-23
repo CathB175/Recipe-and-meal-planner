@@ -251,18 +251,7 @@
 
                         <div className="action-buttons">
                             <button className="btn btn-primary" onClick={() => { setEditingRecipe(null); setShowFormModal(true); }}>+ Add Recipe</button>
-                            <button className="btn btn-secondary" onClick={handleImport}>📥 Import File</button>
-                            <button className="btn btn-secondary" onClick={handlePasteImport}>📋 Paste JSON</button>
-                            <button className="btn btn-secondary" onClick={handleExport}>📤 Export</button>
                         </div>
-
-                        <div style={{ marginBottom: '1rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded} style={{ padding: '0.55rem 1rem' }}>
-                                {filtersExpanded ? '▲ Hide filters' : '▼ Show filters'}{selectedCollections.length + selectedKeywords.length > 0 ? ' (' + (selectedCollections.length + selectedKeywords.length) + ' selected)' : ''}
-                            </button>
-                        </div>
-                        {filtersExpanded && (
-                            <React.Fragment>
                         {allCollections.length > 0 && (
                             <div className="filter-bar">
                                 <span style={{ fontWeight: '600', marginRight: '0.5rem' }}>Collections:</span>
@@ -278,6 +267,13 @@
                                 ))}
                             </div>
                         )}
+                        <div style={{ marginBottom: '1rem' }}>
+                            <button className="btn btn-secondary" onClick={() => setFiltersExpanded(!filtersExpanded)} aria-expanded={filtersExpanded} style={{ padding: '0.55rem 1rem' }}>
+                                {filtersExpanded ? '▲ Hide keywords' : '▼ Show keywords'}{selectedKeywords.length > 0 ? ' (' + selectedKeywords.length + ' selected)' : ''}
+                            </button>
+                        </div>
+                        {filtersExpanded && (
+                            <React.Fragment>
                         {allKeywords.length > 0 && (
                             <div className="filter-bar">
                                 <span style={{ fontWeight: '600', marginRight: '0.5rem' }}>Keywords:</span>
@@ -293,6 +289,14 @@
                         )}
                             </React.Fragment>
                         )}
+                        <details style={{ marginBottom: '1rem' }}>
+                            <summary style={{ cursor: 'pointer', color: 'var(--text-light)', fontSize: '0.9rem' }}>More options (Import / Export)</summary>
+                            <div className="action-buttons" style={{ marginTop: '0.75rem' }}>
+                                <button className="btn btn-secondary" onClick={handleImport}>📥 Import File</button>
+                                <button className="btn btn-secondary" onClick={handlePasteImport}>📋 Paste JSON</button>
+                                <button className="btn btn-secondary" onClick={handleExport}>📤 Export</button>
+                            </div>
+                        </details>
                         {(selectedCollections.length > 0 || selectedKeywords.length > 0) && (
                             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>Active filters:</span>
